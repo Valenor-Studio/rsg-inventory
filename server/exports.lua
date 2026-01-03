@@ -54,6 +54,10 @@ Inventory.GetItemWeight = function(itemName)
 end
 
 Inventory.UseItem = function(itemName, ...)
+    local itemData = RSGCore.Functions.CanUseItem(itemName)
+    local callback = type(itemData) == 'table' and (rawget(itemData, '__cfx_functionReference') and itemData or itemData.cb or itemData.callback) or type(itemData) == 'function' and itemData
+    if not callback then return end
+    callback(...)
     -- v-inventory handles usage internally or via events. 
     -- This export usually triggers the callback in rsg-inventory.
     -- We'll try to use the VBridge UseItem if possible.
