@@ -347,36 +347,46 @@ Shops.DoesShopExist = function(shopName)
     return RegisteredShops and RegisteredShops[shopName] ~= nil
 end
 
+local methods = {
+    AddItem = function(item, amount, slot, info, reason)
+        return Inventory.AddItem(src, item, amount, slot, info, reason)
+    end,
+    RemoveItem = function(item, amount, slot, reason)
+        return Inventory.RemoveItem(src, item, amount, slot, reason)
+    end,
+    GetItemBySlot = function(slot)
+        return Inventory.GetItemBySlot(src, slot)
+    end,
+    GetItemByName = function(item)
+        return Inventory.GetItemByName(src, item)
+    end,
+    GetItemsByName = function(item)
+        return Inventory.GetItemsByName(src, item)
+    end,
+    ClearInventory = function(filterItems)
+        Inventory.ClearInventory(src, filterItems)
+    end,
+    SetInventory = function(items)
+        Inventory.SetInventory(src, items)
+    end
+}
+
 AddEventHandler('RSGCore:Server:PlayerLoaded', function(Player)
     local src = Player.PlayerData.source
 
-    -- Voeg inventaris functies toe aan de speler
-    local methods = {
-        AddItem = function(item, amount, slot, info, reason)
-            return Inventory.AddItem(src, item, amount, slot, info, reason)
-        end,
-        RemoveItem = function(item, amount, slot, reason)
-            return Inventory.RemoveItem(src, item, amount, slot, reason)
-        end,
-        GetItemBySlot = function(slot)
-            return Inventory.GetItemBySlot(src, slot)
-        end,
-        GetItemByName = function(item)
-            return Inventory.GetItemByName(src, item)
-        end,
-        GetItemsByName = function(item)
-            return Inventory.GetItemsByName(src, item)
-        end,
-        ClearInventory = function(filterItems)
-            Inventory.ClearInventory(src, filterItems)
-        end,
-        SetInventory = function(items)
-            Inventory.SetInventory(src, items)
-        end
-    }
-
     for methodName, methodFunc in pairs(methods) do
         RSGCore.Functions.AddPlayerMethod(src, methodName, methodFunc)
+    end
+end)
+
+CreateThread(function()
+    Wait(1500)
+    if RSGCore then
+        for _, playerId in ipairs(GetPlayers()) do
+            for methodName, methodFunc in pairs(methods) do
+                RSGCore.Functions.AddPlayerMethod(playerId, methodName, methodFunc)
+            end
+        end
     end
 end)
 
