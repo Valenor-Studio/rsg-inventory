@@ -283,6 +283,7 @@ Shops.CreateShop = function(shopData)
         end
         
         -- Sync with v-inventory Config.Shops so server.lua BuyItem verification works
+        Config = exports['v-inventory']:GetConfig()
         if Config and Config.Shops then
             local found = false
             for i, s in ipairs(Config.Shops) do
@@ -295,6 +296,7 @@ Shops.CreateShop = function(shopData)
             if not found then
                 table.insert(Config.Shops, RegisteredShops[shopData.name])
             end
+            exports['v-inventory']:SetConfigShops(Config.Shops)
         end
     else
         for key, data in pairs(shopData) do
@@ -379,16 +381,17 @@ AddEventHandler('RSGCore:Server:PlayerLoaded', function(Player)
     end
 end)
 
-CreateThread(function()
-    Wait(1500)
-    if RSGCore then
-        for _, playerId in ipairs(GetPlayers()) do
-            for methodName, methodFunc in pairs(methods) do
-                RSGCore.Functions.AddPlayerMethod(playerId, methodName, methodFunc)
-            end
-        end
-    end
-end)
+-- CreateThread(function()
+--     Wait(1500)
+--     repeat Wait(1000) until LocalPlayer.state.isLoggedIn
+--     if LocalPlayer.state.isLoggedIn then
+--         for _, playerId in ipairs(GetPlayers()) do
+--             for methodName, methodFunc in pairs(methods) do
+--                 RSGCore.Functions.AddPlayerMethod(playerId, methodName, methodFunc)
+--             end
+--         end
+--     end
+-- end)
 
 
 -- Exports Registration
