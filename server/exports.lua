@@ -14,7 +14,10 @@ CreateThread(function()
 end)
 
 Inventory.LoadInventory = function(source, citizenid)
-    return VBridge.GetInventory(source, "player", citizenid)
+    local inventory = VBridge.GetInventory(source, "player", citizenid)
+    local player = RSGCore.Functions.GetPlayer(source)
+    if player then player.Functions.SetPlayerData('items', inventory) end
+    return inventory
 end
 
 Inventory.SaveInventory = function(source, offline)
@@ -29,12 +32,16 @@ end
 Inventory.SetInventory = function(source, items)
     -- This is a complex operation in v-inventory. 
     -- Best effort: Clear and Add.
-    VBridge.ClearInventory(source)
+    exports["v-inventory"]:ClearInventory(source)
     if items then
         for _, item in pairs(items) do
-            VBridge.AddItem(source, item.name, item.amount, item.info or item.metadata, "player", nil, item.slot)
+            if item.type == "item_money" then 
+            else VBridge.AddItem(source, item.name, item.amount, item.info or item.metadata, "player", nil, item.slot + 1) end
         end
     end
+    local Player = RSGCore.Functions.GetPlayer(source)
+    if not Player then return end
+    Player.Functions.SetPlayerData('items', items)
 end
 
 Inventory.SetItemData = function(source, itemName, key, val)
@@ -208,7 +215,11 @@ Inventory.AddItem = function(identifier, item, amount, slot, info, reason)
     -- v-inventory AddItem takes (source/containerId, ...)
     local src = tonumber(identifier)
     if src then
-        return VBridge.AddItem(src, item, amount, info, "player", nil, slot)
+        local added = VBridge.AddItem(src, item, amount, info, "player", nil, slot)
+        local player = RSGCore.Functions.GetPlayer(src)
+        local inventory = VBridge.GetInventory(src, "player", player.PlayerData.citizenid)
+        if player then player.Functions.SetPlayerData('items', inventory) end
+        return added
     else
         -- Assume stash
         return VBridge.AddItem(nil, item, amount, info, "stash", identifier, slot)
@@ -218,7 +229,11 @@ end
 Inventory.RemoveItem = function(identifier, item, amount, slot, reason, isMove)
     local src = tonumber(identifier)
     if src then
-        return VBridge.RemoveItem(src, item, amount, "player", nil, slot)
+        local isremoved = VBridge.RemoveItem(src, item, amount, "player", nil, slot)
+        local player = RSGCore.Functions.GetPlayer(src)
+        local inventory = VBridge.GetInventory(src, "player", player.PlayerData.citizenid)
+        if player then player.Functions.SetPlayerData('items', inventory) end
+        return isremoved
     else
          return VBridge.RemoveItem(nil, item, amount, "stash", identifier, slot)
     end
@@ -379,6 +394,44 @@ AddEventHandler('RSGCore:Server:PlayerLoaded', function(Player)
 
     for methodName, methodFunc in pairs(methods) do
         RSGCore.Functions.AddPlayerMethod(src, methodName, methodFunc)
+    end
+end)
+
+AddEventHandler('onResourceStart', function(resourceName)
+    if resourceName ~= GetCurrentResourceName() then return end
+
+    local Players = RSGCore.Functions.GetRSGPlayers()
+    for k in pairs(Players) do
+        local methods = {
+            AddItem = function(item, amount, slot, info)
+                return Inventory.AddItem(k, item, amount, slot, info)
+            end,
+            RemoveItem = function(item, amount, slot)
+                return Inventory.RemoveItem(k, item, amount, slot)
+            end,
+            GetItemBySlot = function(slot)
+                return Inventory.GetItemBySlot(k, slot)
+            end,
+            GetItemByName = function(item)
+                return Inventory.GetItemByName(k, item)
+            end,
+            GetItemsByName = function(item)
+                return Inventory.GetItemsByName(k, item)
+            end,
+            ClearInventory = function(filterItems)
+                Inventory.ClearInventory(k, filterItems)
+            end,
+            SetInventory = function(items)
+                Inventory.SetInventory(k, items)
+            end
+        }
+
+        for methodName, methodFunc in pairs(methods) do
+            RSGCore.Functions.AddPlayerMethod(k, methodName, methodFunc)
+        end
+
+        -- Reset inventory busy state
+        Player(k).state.inv_busy = false
     end
 end)
 
